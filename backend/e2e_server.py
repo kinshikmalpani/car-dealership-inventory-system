@@ -10,7 +10,7 @@ from alembic.config import Config
 from app.cli import seed
 from app.database import make_database
 from app.main import create_app
-from app.models import User
+from app.models import User, Vehicle
 from app.security import password_hasher
 
 
@@ -26,6 +26,8 @@ def main():
                 session.add(User(email=f"{role}@example.com", password_hash=password_hasher.hash("E2ePassword123!"), role=role))
             session.commit()
             seed(session)
+            session.add(Vehicle(make="Legacy Test", model="Archive", category="SUV", price_cents=1000000, quantity=1, currency="USD"))
+            session.commit()
         engine.dispose()
         application = create_app(url, "isolated-e2e-server-secret-at-least-32-characters")
         uvicorn.run(application, host="127.0.0.1", port=int(os.environ.get("E2E_PORT", "8000")))

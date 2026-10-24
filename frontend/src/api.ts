@@ -6,6 +6,14 @@ export type Vehicle = {
   category: string;
   price: string;
   quantity: number;
+  currency?: string;
+  seating_capacity?: number | null;
+  description?: string;
+  image_url?: string;
+  source_url?: string;
+  specifications?: Record<string, string>;
+  features?: string[];
+  price_note?: string;
 };
 export type VehiclePage = { items: Vehicle[]; total: number };
 export type LoginResult = { access_token: string; user: User };
@@ -35,6 +43,8 @@ export async function api<T>(
   if (response.status === 204) return undefined as T;
   const body = await response.json();
   if (!response.ok) {
+    if (response.status === 401 && path !== "/auth/login")
+      window.dispatchEvent(new Event("motorroom:session-expired"));
     const detail = body.detail;
     const message = Array.isArray(detail)
       ? detail
@@ -58,9 +68,9 @@ export function errorMessage(error: unknown) {
     : "Could not connect to the server. Please try again.";
 }
 
-export const currency = import.meta.env.VITE_CURRENCY || "USD";
+export const currency = "INR";
 export const money = (value: number | string) =>
-  new Intl.NumberFormat("en-US", {
+  new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency,
     maximumFractionDigits: 2,

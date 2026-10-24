@@ -1,9 +1,11 @@
 from concurrent.futures import ThreadPoolExecutor
 from uuid import uuid4
+import pytest
+from sqlalchemy import event
 
 from sqlalchemy import select
 
-from app.models import Vehicle
+from app.models import Vehicle, Order
 from test_api import client, admin, customer, vehicle, add_vehicle, register, login
 
 
@@ -96,3 +98,27 @@ def test_legacy_currency_not_relabelled(client, admin, customer, vehicle):
     assert client.post(f"/api/vehicles/{vehicle_id}/purchase", headers=customer).status_code == 409
     assert client.get("/api/vehicles?currency=USD", headers=customer).status_code == 403
     assert client.get("/api/vehicles?currency=USD", headers=admin).json()["total"] == 1
+
+
+def test_order_write_failure_rolls_back_stock(client, admin, customer, vehicle):
+    vehicle_id = add_vehicle(client, admin, vehicle)
+    session_class = client.app.state.session_factory.class_
+    def fail_order(session, *_):
+        if any(isinstance(item, Order) for item in session.new):
+            raise RuntimeError("Simulated storage failure")
+    event.listen(session_class, "before_flush", fail_order)
+    try:
+        with pytest.raises(RuntimeError, match="storage failure"):
+            client.post(f"/api/vehicles/{vehicle_id}/purchase", headers=customer)
+    finally:
+        event.remove(session_class, "before_flush", fail_order)
+    assert client.get(f"/api/vehicles/{vehicle_id}", headers=customer).json()["quantity"] == 2
+    assert client.get("/api/orders", headers=customer).json() == []
+
+def test_checkout_accepts_full_vehicle_price_range(client, admin, customer, vehicle):
+    vehicle_id = add_vehicle(client, admin, {**vehicle, "price": "20000000.00"})
+    options = {"registration_estimate": "10000000.00", "insurance_estimate": "10000000.00"}
+    quote = client.post(f"/api/vehicles/{vehicle_id}/quote", headers=customer, json=options).json()
+    response = client.post(f"/api/vehicles/{vehicle_id}/purchase", headers=customer, json={**options, "expected_total": quote["total"]})
+    assert response.status_code == 200
+    assert response.json()["summary"]["total"] == "40000000.00"

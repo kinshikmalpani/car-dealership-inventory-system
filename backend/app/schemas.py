@@ -40,6 +40,21 @@ class VehicleEdit(InputModel):
     model: str = Field(min_length=1, max_length=100)
     category: str = Field(min_length=1, max_length=50)
     price: Decimal = Field(ge=0, max_digits=11, decimal_places=2, allow_inf_nan=False)
+    currency: Literal["INR"] = "INR"
+    seating_capacity: int | None = Field(default=None, ge=2, le=12, strict=True)
+    description: str = Field(default="", max_length=2000)
+    image_url: str = Field(default="", max_length=2000)
+    source_url: str = Field(default="", max_length=2000)
+    specifications: dict[str, str] = Field(default_factory=dict, max_length=20)
+    features: list[str] = Field(default_factory=list, max_length=20)
+    price_note: str = Field(default="Dealership listed price", max_length=500)
+
+    @field_validator("image_url", "source_url")
+    @classmethod
+    def safe_url(cls, value):
+        if value and not value.startswith("https://") and not (value.startswith("/images/") and ".." not in value):
+            raise ValueError("Use an HTTPS URL or a local /images/ path")
+        return value
 
     @field_validator("make", "model", "category", mode="before")
     @classmethod
@@ -62,6 +77,14 @@ class VehicleOut(BaseModel):
     category: str
     price: Decimal
     quantity: int
+    currency: str
+    seating_capacity: int | None
+    description: str
+    image_url: str
+    source_url: str
+    specifications: dict[str, str]
+    features: list[str]
+    price_note: str
 
     @field_serializer("price")
     def serialize_price(self, value):

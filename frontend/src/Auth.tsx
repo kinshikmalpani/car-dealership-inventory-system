@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from "react";
 import { api, errorMessage, type LoginResult } from "./api";
-import { CarArt } from "./VehicleCard";
 
 export function Auth({
   onLogin,
@@ -58,7 +57,11 @@ export function Auth({
             <br />
             Your dealership, all in one place.
           </p>
-          <CarArt category="Sedan" color="#c8d5b7" />
+          <img
+            className="auth-model-photo"
+            src="/images/cars/ertiga.jpg"
+            alt="Maruti Suzuki Ertiga"
+          />
         </div>
         <span className="auth-foot">INVENTORY, BEAUTIFULLY SIMPLIFIED.</span>
       </section>

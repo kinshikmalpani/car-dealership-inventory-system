@@ -13,6 +13,8 @@ import {
 import { Auth } from "./Auth";
 import { VehicleCard } from "./VehicleCard";
 import { Modal } from "./Modal";
+import { CustomerApp, useRoute } from "./customer/CustomerApp";
+import { AdminManagement } from "./AdminManagement";
 
 type Action =
   | { kind: "new" }
@@ -20,6 +22,12 @@ type Action =
 const initialFilters = { q: "", category: "", min_price: "", max_price: "" };
 
 export default function App() {
+  const route = useRoute();
+  const legacy = route === "/admin/legacy";
+  const management =
+    route.includes("customers") ||
+    route.includes("orders") ||
+    route.includes("test-drives");
   const [token, setToken] = useState<string | null>(() =>
     sessionStorage.getItem("motorroom-token"),
   );
@@ -56,6 +64,12 @@ export default function App() {
     setUser(session.user);
     setNotice("");
   }
+  useEffect(() => {
+    const expired = () => logout("Your session expired. Please sign in again.");
+    window.addEventListener("motorroom:session-expired", expired);
+    return () =>
+      window.removeEventListener("motorroom:session-expired", expired);
+  }, []);
   function handleError(error: unknown) {
     if (error instanceof ApiError && error.status === 401)
       logout("Your session expired. Please sign in again.");
@@ -77,7 +91,7 @@ export default function App() {
   }, [token, user]);
 
   useEffect(() => {
-    if (!user || !token) return;
+    if (!user || !token || user.role !== "admin") return;
     const controller = new AbortController();
     setLoading(true);
     setError("");
@@ -85,6 +99,7 @@ export default function App() {
       const params = new URLSearchParams({
         limit: "12",
         offset: String(offset),
+        currency: legacy ? "USD" : "INR",
       });
       Object.entries(filters).forEach(([key, value]) => {
         if (value.trim()) params.set(key, value.trim());
@@ -108,7 +123,7 @@ export default function App() {
       clearTimeout(timeout);
       controller.abort();
     };
-  }, [token, user, filters, offset, refresh]);
+  }, [token, user, filters, offset, refresh, legacy]);
 
   function filter(key: keyof typeof filters, value: string) {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -133,6 +148,27 @@ export default function App() {
           model: data.get("model"),
           category: data.get("category"),
           price: data.get("price"),
+          currency: "INR",
+          seating_capacity: data.get("seating_capacity")
+            ? Number(data.get("seating_capacity"))
+            : null,
+          description: data.get("description"),
+          image_url: data.get("image_url"),
+          source_url: data.get("source_url"),
+          price_note: data.get("price_note"),
+          features: String(data.get("features") || "")
+            .split("\n")
+            .map((x) => x.trim())
+            .filter(Boolean),
+          specifications: Object.fromEntries(
+            String(data.get("specifications") || "")
+              .split("\n")
+              .filter((x) => x.includes(":"))
+              .map((x) => {
+                const i = x.indexOf(":");
+                return [x.slice(0, i).trim(), x.slice(i + 1).trim()];
+              }),
+          ),
           ...(action.kind === "new"
             ? { quantity: Number(data.get("quantity")) }
             : {}),
@@ -191,6 +227,8 @@ export default function App() {
       </main>
     );
   if (!user) return <Auth onLogin={signIn} notice={notice} />;
+  if (user.role === "customer")
+    return <CustomerApp token={token!} user={user} onLogout={logout} />;
   const admin = user.role === "admin";
   const units = page.items.reduce(
     (total, vehicle) => total + vehicle.quantity,
@@ -212,13 +250,25 @@ export default function App() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a className="brand" href="#inventory">
+        <a className="brand" href="#/admin/inventory">
           <span className="brand-mark">m</span> motorroom
           <span className="brand-dot">.</span>
         </a>
         <p className="nav-label">WORKSPACE</p>
-        <a className="nav-item active" href="#inventory">
+        <a className="nav-item active" href="#/admin/inventory">
           <span>▦</span> Vehicle inventory <span className="nav-arrow">↗</span>
+        </a>
+        <a className="nav-item" href="#/admin/customers">
+          ◎ Customers
+        </a>
+        <a className="nav-item" href="#/admin/orders">
+          ▤ Purchases & invoices
+        </a>
+        <a className="nav-item" href="#/admin/test-drives">
+          ◷ Test-drive enquiries
+        </a>
+        <a className="nav-item" href="#/admin/legacy">
+          ↺ Legacy inventory
         </a>
         <button className="nav-item" onClick={() => setGuide(true)}>
           <span>◷</span> Quick guide
@@ -252,222 +302,245 @@ export default function App() {
           </div>
         </header>
         <main id="inventory" className="main-content">
-          <section className="page-heading">
-            <div>
-              <p className="eyebrow">YOUR SHOWROOM, AT A GLANCE</p>
-              <h1>
-                Vehicle inventory<span>.</span>
-              </h1>
-              <p className="muted">
-                {admin
-                  ? "A clear view of every vehicle. More room for your next move."
-                  : "Explore the collection. Find the vehicle that feels like you."}
-              </p>
-            </div>
-            {admin && (
-              <button
-                className="primary"
-                onClick={() => openAction({ kind: "new" })}
-              >
-                ＋ Add vehicle
-              </button>
-            )}
-          </section>
-          <section className="overview" aria-label="Inventory overview">
-            <div>
-              <span className="stat-icon">▦</span>
-              <div>
-                <p>Matching models</p>
-                <strong>{String(page.total).padStart(2, "0")}</strong>
-              </div>
-              <span className="stat-note">Your collection</span>
-            </div>
-            <div>
-              <span className="stat-icon">↗</span>
-              <div>
-                <p>Units on this page</p>
-                <strong>{String(units).padStart(2, "0")}</strong>
-              </div>
-              <span className="stat-note">Ready for a new chapter</span>
-            </div>
-            <div>
-              <span className="stat-icon">◈</span>
-              <div>
-                <p>Stock value on this page</p>
-                <strong className="stat-value">{money(value)}</strong>
-              </div>
-              <span className="stat-note">Listed value · {currency}</span>
-            </div>
-          </section>
-          <section className="collection">
-            <div className="collection-header">
-              <h2>
-                The collection <span>{page.total}</span>
-              </h2>
-              <span className="muted collection-note">
-                Thoughtfully organized. Ready to explore.
-              </span>
-            </div>
-            <div className="filter-bar">
-              <div className="category-tabs" aria-label="Category filters">
-                {["", "SUV", "Sedan", "Coupe"].map((category) => (
-                  <button
-                    key={category}
-                    aria-pressed={filters.category === category}
-                    className={filters.category === category ? "selected" : ""}
-                    onClick={() => filter("category", category)}
-                  >
-                    {category || "All vehicles"}
-                  </button>
-                ))}
-              </div>
-              <label className="search">
-                <span aria-hidden="true">⌕</span>
-                <input
-                  aria-label="Search vehicles"
-                  value={filters.q}
-                  onChange={(event) => filter("q", event.target.value)}
-                  placeholder="Search make, model, category…"
-                  maxLength={100}
-                />
-              </label>
-            </div>
-            <div className="price-filters">
-              <span>PRICE RANGE</span>
-              <label>
-                <span className="sr-only">Minimum price</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="Min price"
-                  value={filters.min_price}
-                  onChange={(event) => filter("min_price", event.target.value)}
-                />
-              </label>
-              <span>—</span>
-              <label>
-                <span className="sr-only">Maximum price</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="Max price"
-                  value={filters.max_price}
-                  onChange={(event) => filter("max_price", event.target.value)}
-                />
-              </label>
-              <button
-                onClick={() => {
-                  setFilters(initialFilters);
-                  setOffset(0);
-                }}
-              >
-                Reset filters
-              </button>
-              <span className="result-count">
-                {page.total} {page.total === 1 ? "vehicle" : "vehicles"} found
-              </span>
-            </div>
-            {success && (
-              <div
-                className="alert success"
-                role="status"
-                aria-label="Inventory notification"
-              >
-                ✓ {success}
-                <button
-                  aria-label="Dismiss notification"
-                  onClick={() => setSuccess("")}
-                >
-                  ×
-                </button>
-              </div>
-            )}
-            {error && (
-              <div className="alert error" role="alert">
-                {error}
-                <button onClick={() => setRefresh((value) => value + 1)}>
-                  Try again
-                </button>
-              </div>
-            )}
-            {loading ? (
-              <div
-                className="loading-grid"
-                role="status"
-                aria-label="Loading vehicles"
-              >
-                {[1, 2, 3].map((key) => (
-                  <div key={key} className="skeleton" />
-                ))}
-              </div>
-            ) : (
-              !error &&
-              (page.items.length ? (
-                <div className="vehicle-grid">
-                  {page.items.map((vehicle) => (
-                    <VehicleCard
-                      key={vehicle.id}
-                      vehicle={vehicle}
-                      admin={admin}
-                      busy={busy}
-                      onPurchase={() =>
-                        openAction({ kind: "purchase", vehicle })
-                      }
-                      onEdit={() => openAction({ kind: "edit", vehicle })}
-                      onRestock={() => openAction({ kind: "restock", vehicle })}
-                      onDelete={() => openAction({ kind: "delete", vehicle })}
-                    />
-                  ))}
+          {management ? (
+            <AdminManagement token={token!} route={route} />
+          ) : (
+            <>
+              {legacy && (
+                <div className="alert">
+                  These preserved USD listings are hidden from customers. Edit
+                  each listing with a verified INR price before publishing it to
+                  the Indian catalogue.
                 </div>
-              ) : (
-                <div className="empty-state">
-                  <span>⌕</span>
-                  <h3>No vehicles found</h3>
-                  <p>
-                    Try another search or clear your filters.
-                    {admin ? " You can also add a vehicle to get started." : ""}
+              )}
+              <section className="page-heading">
+                <div>
+                  <p className="eyebrow">YOUR SHOWROOM, AT A GLANCE</p>
+                  <h1>
+                    Vehicle inventory<span>.</span>
+                  </h1>
+                  <p className="muted">
+                    {admin
+                      ? "A clear view of every vehicle. More room for your next move."
+                      : "Explore the collection. Find the vehicle that feels like you."}
                   </p>
+                </div>
+                {admin && (
                   <button
-                    className="secondary"
+                    className="primary"
+                    onClick={() => openAction({ kind: "new" })}
+                  >
+                    ＋ Add vehicle
+                  </button>
+                )}
+              </section>
+              <section className="overview" aria-label="Inventory overview">
+                <div>
+                  <span className="stat-icon">▦</span>
+                  <div>
+                    <p>Matching models</p>
+                    <strong>{String(page.total).padStart(2, "0")}</strong>
+                  </div>
+                  <span className="stat-note">Your collection</span>
+                </div>
+                <div>
+                  <span className="stat-icon">↗</span>
+                  <div>
+                    <p>Units on this page</p>
+                    <strong>{String(units).padStart(2, "0")}</strong>
+                  </div>
+                  <span className="stat-note">Ready for a new chapter</span>
+                </div>
+                <div>
+                  <span className="stat-icon">◈</span>
+                  <div>
+                    <p>Stock value on this page</p>
+                    <strong className="stat-value">{legacy ? "Repricing needed" : money(value)}</strong>
+                  </div>
+                  <span className="stat-note">{legacy ? "Original amounts preserved" : `Listed value · ${currency}`}</span>
+                </div>
+              </section>
+              <section className="collection">
+                <div className="collection-header">
+                  <h2>
+                    The collection <span>{page.total}</span>
+                  </h2>
+                  <span className="muted collection-note">
+                    Thoughtfully organized. Ready to explore.
+                  </span>
+                </div>
+                <div className="filter-bar">
+                  <div className="category-tabs" aria-label="Category filters">
+                    {["", "SUV", "Sedan", "Coupe"].map((category) => (
+                      <button
+                        key={category}
+                        aria-pressed={filters.category === category}
+                        className={
+                          filters.category === category ? "selected" : ""
+                        }
+                        onClick={() => filter("category", category)}
+                      >
+                        {category || "All vehicles"}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="search">
+                    <span aria-hidden="true">⌕</span>
+                    <input
+                      aria-label="Search vehicles"
+                      value={filters.q}
+                      onChange={(event) => filter("q", event.target.value)}
+                      placeholder="Search make, model, category…"
+                      maxLength={100}
+                    />
+                  </label>
+                </div>
+                <div className="price-filters">
+                  <span>PRICE RANGE</span>
+                  <label>
+                    <span className="sr-only">Minimum price</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Min price"
+                      value={filters.min_price}
+                      onChange={(event) =>
+                        filter("min_price", event.target.value)
+                      }
+                    />
+                  </label>
+                  <span>—</span>
+                  <label>
+                    <span className="sr-only">Maximum price</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Max price"
+                      value={filters.max_price}
+                      onChange={(event) =>
+                        filter("max_price", event.target.value)
+                      }
+                    />
+                  </label>
+                  <button
                     onClick={() => {
                       setFilters(initialFilters);
                       setOffset(0);
                     }}
                   >
-                    Clear filters
+                    Reset filters
                   </button>
+                  <span className="result-count">
+                    {page.total} {page.total === 1 ? "vehicle" : "vehicles"}{" "}
+                    found
+                  </span>
                 </div>
-              ))
-            )}
-            {page.total > 12 && (
-              <nav className="pagination" aria-label="Inventory pages">
-                <button
-                  disabled={offset === 0 || loading}
-                  onClick={() => setOffset((value) => value - 12)}
-                >
-                  ← Previous
-                </button>
-                <span>
-                  Page {Math.floor(offset / 12) + 1} of{" "}
-                  {Math.ceil(page.total / 12)}
-                </span>
-                <button
-                  disabled={offset + 12 >= page.total || loading}
-                  onClick={() => setOffset((value) => value + 12)}
-                >
-                  Next →
-                </button>
-              </nav>
-            )}
-          </section>
-          <footer className="page-footer">
-            <span>Motorroom — made for the road ahead.</span>
-            <span>
-              All prices in {currency} · Illustrations are representative
-            </span>
-          </footer>
+                {success && (
+                  <div
+                    className="alert success"
+                    role="status"
+                    aria-label="Inventory notification"
+                  >
+                    ✓ {success}
+                    <button
+                      aria-label="Dismiss notification"
+                      onClick={() => setSuccess("")}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+                {error && (
+                  <div className="alert error" role="alert">
+                    {error}
+                    <button onClick={() => setRefresh((value) => value + 1)}>
+                      Try again
+                    </button>
+                  </div>
+                )}
+                {loading ? (
+                  <div
+                    className="loading-grid"
+                    role="status"
+                    aria-label="Loading vehicles"
+                  >
+                    {[1, 2, 3].map((key) => (
+                      <div key={key} className="skeleton" />
+                    ))}
+                  </div>
+                ) : (
+                  !error &&
+                  (page.items.length ? (
+                    <div className="vehicle-grid">
+                      {page.items.map((vehicle) => (
+                        <VehicleCard
+                          key={vehicle.id}
+                          vehicle={vehicle}
+                          admin={admin}
+                          busy={busy}
+                          onPurchase={() =>
+                            openAction({ kind: "purchase", vehicle })
+                          }
+                          onEdit={() => openAction({ kind: "edit", vehicle })}
+                          onRestock={() =>
+                            openAction({ kind: "restock", vehicle })
+                          }
+                          onDelete={() =>
+                            openAction({ kind: "delete", vehicle })
+                          }
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-state">
+                      <span>⌕</span>
+                      <h3>No vehicles found</h3>
+                      <p>
+                        Try another search or clear your filters.
+                        {admin
+                          ? " You can also add a vehicle to get started."
+                          : ""}
+                      </p>
+                      <button
+                        className="secondary"
+                        onClick={() => {
+                          setFilters(initialFilters);
+                          setOffset(0);
+                        }}
+                      >
+                        Clear filters
+                      </button>
+                    </div>
+                  ))
+                )}
+                {page.total > 12 && (
+                  <nav className="pagination" aria-label="Inventory pages">
+                    <button
+                      disabled={offset === 0 || loading}
+                      onClick={() => setOffset((value) => value - 12)}
+                    >
+                      ← Previous
+                    </button>
+                    <span>
+                      Page {Math.floor(offset / 12) + 1} of{" "}
+                      {Math.ceil(page.total / 12)}
+                    </span>
+                    <button
+                      disabled={offset + 12 >= page.total || loading}
+                      onClick={() => setOffset((value) => value + 12)}
+                    >
+                      Next →
+                    </button>
+                  </nav>
+                )}
+              </section>
+              <footer className="page-footer">
+                <span>Motorroom — made for the road ahead.</span>
+              </footer>
+            </>
+          )}
         </main>
       </div>
       {action && (
@@ -526,6 +599,8 @@ export default function App() {
                       <option>Hatchback</option>
                       <option>Truck</option>
                       <option>Van</option>
+                      <option>MPV</option>
+                      <option>Electric</option>
                     </datalist>
                   </label>
                   <label>
@@ -537,7 +612,76 @@ export default function App() {
                       max="999999999.99"
                       step="0.01"
                       required
-                      defaultValue={editing?.price}
+                      defaultValue={
+                        editing?.currency === "USD" ? undefined : editing?.price
+                      }
+                    />
+                  </label>
+                  <label>
+                    Seating capacity
+                    <select
+                      name="seating_capacity"
+                      defaultValue={editing?.seating_capacity || ""}
+                    >
+                      <option value="">Not specified</option>
+                      {[4, 5, 6, 7, 8, 9].map((n) => (
+                        <option key={n} value={n}>
+                          {n}-seater
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Description
+                    <textarea
+                      name="description"
+                      maxLength={2000}
+                      defaultValue={editing?.description}
+                    />
+                  </label>
+                  <label>
+                    Model image URL
+                    <input
+                      name="image_url"
+                      defaultValue={editing?.image_url}
+                      placeholder="https://… or /images/…"
+                    />
+                  </label>
+                  <label>
+                    Manufacturer source URL
+                    <input
+                      name="source_url"
+                      defaultValue={editing?.source_url}
+                    />
+                  </label>
+                  <label>
+                    Price basis
+                    <input
+                      name="price_note"
+                      maxLength={500}
+                      defaultValue={
+                        editing?.currency === "USD"
+                          ? "Verified dealership INR price"
+                          : editing?.price_note || "Dealership listed price"
+                      }
+                    />
+                  </label>
+                  <label>
+                    Features (one per line)
+                    <textarea
+                      name="features"
+                      defaultValue={editing?.features?.join("\n")}
+                    />
+                  </label>
+                  <label>
+                    Specifications (one Key: Value per line)
+                    <textarea
+                      name="specifications"
+                      defaultValue={Object.entries(
+                        editing?.specifications || {},
+                      )
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join("\n")}
                     />
                   </label>
                   {action.kind === "new" ? (
@@ -626,11 +770,11 @@ export default function App() {
               Search by make, model, or category. Use category tabs and price
               filters to narrow your collection.
             </p>
-            <h3>Record a purchase</h3>
+            <h3>Review customer purchases</h3>
             <p>
-              Choose Purchase and confirm to deduct one unit. Sold-out vehicles
-              stay visible but cannot be purchased. This demo does not process
-              payments.
+              Use Purchases & invoices to review customer orders. Only customer
+              accounts can purchase vehicles. Test-drive enquiries can be
+              managed from the dedicated navigation item.
             </p>
             {admin && (
               <>

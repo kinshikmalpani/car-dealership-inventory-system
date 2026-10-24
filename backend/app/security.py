@@ -49,6 +49,15 @@ def admin_user(user: UserDep):
 AdminDep = Annotated[User, Depends(admin_user)]
 
 
+def customer_user(user: UserDep):
+    if user.role != "customer":
+        raise HTTPException(403, "Please use a customer account for this action.")
+    return user
+
+
+CustomerDep = Annotated[User, Depends(customer_user)]
+
+
 def issue_token(request: Request, user: User):
     now = datetime.now(timezone.utc)
     return jwt.encode({"sub": str(user.id), "iat": now, "exp": now + timedelta(minutes=request.app.state.token_minutes)}, request.app.state.jwt_secret, algorithm="HS256")

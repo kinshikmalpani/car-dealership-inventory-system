@@ -10,7 +10,10 @@ export default defineConfig({
   workers: 1,
   timeout: 30_000,
   reporter: [["list"], ["junit", { outputFile: "../docs/browser-tests.xml" }]],
-  use: { baseURL: "http://127.0.0.1:5173", trace: "retain-on-failure" },
+  use: {
+    baseURL: process.env.E2E_BASE_URL || "http://127.0.0.1:5173",
+    trace: "retain-on-failure",
+  },
   projects: [
     {
       name: "chromium",
@@ -20,19 +23,21 @@ export default defineConfig({
       },
     },
   ],
-  webServer: process.env.E2E_EXTERNAL_SERVERS ? undefined : [
-    {
-      command: `${python} e2e_server.py`,
-      cwd: "../backend",
-      url: "http://127.0.0.1:8000/api/health",
-      reuseExistingServer: false,
-      timeout: 60_000,
-    },
-    {
-      command: "npm run dev -- --port 5173 --strictPort",
-      url: "http://127.0.0.1:5173",
-      reuseExistingServer: false,
-      timeout: 60_000,
-    },
-  ],
+  webServer: process.env.E2E_EXTERNAL_SERVERS
+    ? undefined
+    : [
+        {
+          command: `${python} e2e_server.py`,
+          cwd: "../backend",
+          url: "http://127.0.0.1:8000/api/health",
+          reuseExistingServer: false,
+          timeout: 60_000,
+        },
+        {
+          command: "npm run dev -- --port 5173 --strictPort",
+          url: "http://127.0.0.1:5173",
+          reuseExistingServer: false,
+          timeout: 60_000,
+        },
+      ],
 });

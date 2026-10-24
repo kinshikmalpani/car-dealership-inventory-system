@@ -6,37 +6,52 @@ async function signIn(page: Page, role = "admin") {
   await page.getByLabel("Password", { exact: true }).fill("E2ePassword123!");
   await page.getByRole("button", { name: "Sign in →" }).click();
   await expect(
-    page.getByRole("heading", { name: "Vehicle inventory." }),
+    page.getByRole("heading", {
+      name: role === "admin" ? "Vehicle inventory." : /A car for every/,
+    }),
   ).toBeVisible();
   await expect(page.locator(".vehicle-card").first()).toBeVisible();
 }
 
-test("customer searches, purchases, persists session, and sees sold-out vehicles", async ({
+test("customer purchases a car with accessories and downloads a private invoice", async ({
   page,
 }) => {
   await signIn(page, "customer");
   await expect(
     page.getByRole("button", { name: "＋ Add vehicle" }),
   ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Out of stock" }),
-  ).toBeDisabled();
-  await page.getByLabel("Search vehicles").fill("Toyota");
+  await page.getByLabel("Search vehicles").fill("Swift");
   await expect(page.locator(".vehicle-card")).toHaveCount(1);
-  const card = page.locator(".vehicle-card");
-  await expect(card).toContainText("7 in stock");
-  await card.getByRole("button", { name: "Purchase ↗" }).click();
+  await page.getByRole("button", { name: "View details →" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Swift", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Review purchase →" }).click();
+  await page.getByLabel("Full name").fill("Asha Kumar");
+  await page.getByLabel("Registration city").fill("Pune");
+  await page.getByLabel("Floor mat set", { exact: false }).check();
+  await page.getByLabel("Registration estimate (₹)").fill("40000");
+  await page.getByLabel("Insurance estimate (₹)").fill("20000");
+  await expect(page.locator(".breakdown-total")).toContainText("₹6,45,400.00");
   await page
-    .getByRole("button", { name: "Confirm purchase", exact: true })
+    .getByLabel("I understand that payment is simulated", { exact: false })
+    .check();
+  await page
+    .getByRole("button", { name: "Confirm simulated purchase" })
     .click();
   await expect(
-    page.getByRole("status", { name: "Inventory notification" }),
-  ).toContainText("Purchase recorded");
-  await expect(card).toContainText("6 in stock");
-  await page.reload();
-  await expect(
-    page.getByRole("heading", { name: "Vehicle inventory." }),
+    page.getByRole("heading", { name: "Great choice!" }),
   ).toBeVisible();
+  await expect(page.locator("main")).toContainText("Asha Kumar");
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download invoice" }).click();
+  expect((await download).suggestedFilename()).toMatch(
+    /^invoice-MR-IN-.+\.html$/,
+  );
+  await page.getByRole("link", { name: "My purchases", exact: true }).click();
+  await expect(page.locator(".order-row")).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator(".order-row")).toHaveCount(1);
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(
     page.getByRole("heading", { name: "Welcome back." }),
@@ -49,18 +64,19 @@ test("admin adds, edits, restocks, and deletes a vehicle", async ({ page }) => {
   await page.getByLabel("Make", { exact: true }).fill("Test Motors");
   await page.getByLabel("Model", { exact: true }).fill("Roadster");
   await page.getByLabel("Category", { exact: true }).fill("Coupe");
-  await page.getByLabel("Price (USD)").fill("10000.50");
+  await page.getByLabel("Price (INR)").fill("10000.50");
   await page.getByLabel("Initial quantity").fill("0");
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Add vehicle", exact: true })
     .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.getByLabel("Search vehicles").fill("Test Motors");
   const card = page.locator(".vehicle-card");
   await expect(card).toHaveCount(1);
   await expect(
-    card.getByRole("button", { name: "Out of stock" }),
-  ).toBeDisabled();
+    card.getByRole("button", { name: /Purchase|Out of stock/ }),
+  ).toHaveCount(0);
   await card.getByRole("button", { name: "Edit details" }).click();
   await page.getByLabel("Model", { exact: true }).fill("Roadster Plus");
   await page.getByRole("button", { name: "Save changes" }).click();
@@ -93,7 +109,7 @@ test("registration creates a customer and validates wrong credentials", async ({
   await page.getByLabel("Password", { exact: true }).fill("NewPassword123!");
   await page.getByRole("button", { name: "Create account →" }).click();
   await expect(
-    page.getByRole("heading", { name: "Vehicle inventory." }),
+    page.getByRole("heading", { name: /A car for every/ }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "＋ Add vehicle" }),
@@ -105,7 +121,7 @@ test("filters handle empty results and invalid price ranges", async ({
 }) => {
   await signIn(page);
   await page.getByRole("button", { name: "Sedan", exact: true }).click();
-  await expect(page.locator(".vehicle-card")).toHaveCount(2);
+  await expect(page.locator(".vehicle-card")).toHaveCount(1);
   await page.getByLabel("Minimum price").fill("50000");
   await page.getByLabel("Maximum price").fill("10000");
   await expect(page.getByRole("alert")).toContainText(
@@ -154,4 +170,25 @@ test("desktop and mobile layouts have no overflow and provide screenshots", asyn
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   expect(errors).toEqual([]);
+});
+
+
+test("legacy inventory requires explicit INR repricing and never mislabels USD totals", async ({ page }) => {
+  await signIn(page);
+  await page.getByRole("link", { name: "Legacy inventory" }).click();
+  await expect(page.locator(".vehicle-card")).toHaveCount(1);
+  await expect(page.locator(".stat-value")).toHaveText("Repricing needed");
+  await page.getByRole("button", { name: "Edit details" }).click();
+  await expect(page.getByLabel("Price (INR)")).toHaveValue("");
+  await page.getByLabel("Price (INR)").fill("1500000");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".vehicle-card")).toHaveCount(0);
+  await page.getByRole("link", { name: /Vehicle inventory/ }).click();
+  await page.getByLabel("Search vehicles").fill("Legacy Test");
+  await expect(page.locator(".vehicle-card")).toHaveCount(1);
+  await expect(page.locator(".vehicle-card")).toContainText("₹15,00,000.00");
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Delete vehicle", exact: true }).click();
+  await expect(page.locator(".vehicle-card")).toHaveCount(0);
 });

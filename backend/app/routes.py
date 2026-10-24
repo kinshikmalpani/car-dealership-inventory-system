@@ -56,10 +56,16 @@ def list_vehicles(
     max_price: Annotated[Decimal | None, Query(ge=0, max_digits=11, decimal_places=2)] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 12,
     offset: Annotated[int, Query(ge=0)] = 0,
+    seating_capacity: Annotated[int | None, Query(ge=2, le=12)] = None,
+    currency: Annotated[str, Query(pattern="^(INR|USD)$")] = "INR",
 ):
     if min_price is not None and max_price is not None and min_price > max_price:
         raise HTTPException(422, "Minimum price must not exceed maximum price.")
-    statement = select(Vehicle)
+    if currency != "INR" and user.role != "admin":
+        raise HTTPException(403, "Legacy inventory is available only to administrators.")
+    statement = select(Vehicle).where(Vehicle.currency == currency)
+    if seating_capacity is not None:
+        statement = statement.where(Vehicle.seating_capacity == seating_capacity)
     if q.strip():
         statement = statement.where(or_(*(column.icontains(q.strip(), autoescape=True) for column in (Vehicle.make, Vehicle.model, Vehicle.category))))
     for column, value in [(Vehicle.make, make), (Vehicle.model, model), (Vehicle.category, category)]:
@@ -88,7 +94,7 @@ def edit_vehicle(vehicle_id: int, payload: VehicleEdit, session: SessionDep, adm
     vehicle = session.get(Vehicle, vehicle_id)
     if vehicle is None:
         raise HTTPException(404, "Vehicle not found.")
-    for field, value in payload.model_dump(exclude={"price"}).items():
+    for field, value in payload.model_dump(exclude={"price"}, exclude_unset=True).items():
         setattr(vehicle, field, value)
     vehicle.price_cents = int(payload.price * 100)
     session.commit()
@@ -104,11 +110,6 @@ def delete_vehicle(vehicle_id: int, session: SessionDep, admin: AdminDep):
     session.delete(vehicle)
     session.commit()
     return Response(status_code=204)
-
-
-@router.post("/vehicles/{vehicle_id}/purchase", response_model=VehicleOut)
-def purchase(vehicle_id: int, session: SessionDep, user: UserDep):
-    return change_stock(session, vehicle_id, -1)
 
 
 @router.post("/vehicles/{vehicle_id}/restock", response_model=VehicleOut)

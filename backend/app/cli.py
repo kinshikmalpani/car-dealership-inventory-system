@@ -6,27 +6,13 @@ from sqlalchemy import select
 
 from app.config import Settings
 from app.database import make_database
-from app.models import User, Vehicle
+from app.models import User
 from app.schemas import Register
 from app.security import password_hasher
 
-SAMPLE_VEHICLES = [
-    ("Volvo", "XC60", "SUV", 4750000, 4),
-    ("BMW", "330i", "Sedan", 4490000, 3),
-    ("Toyota", "RAV4 Hybrid", "SUV", 3650000, 7),
-    ("Porsche", "718 Cayman", "Coupe", 7290000, 0),
-    ("Mercedes-Benz", "C 300", "Sedan", 4695000, 2),
-    ("Audi", "Q5", "SUV", 4590000, 5),
-]
-
-
 def seed(session):
-    if session.scalar(select(Vehicle.id).limit(1)) is not None:
-        return False
-    for make, model, category, price_cents, quantity in SAMPLE_VEHICLES:
-        session.add(Vehicle(make=make, model=model, category=category, price_cents=price_cents, quantity=quantity))
-    session.commit()
-    return True
+    from app.catalogue import seed_india
+    return seed_india(session)
 
 
 def main():
@@ -34,13 +20,13 @@ def main():
     subparsers = parser.add_subparsers(dest="command", required=True)
     admin = subparsers.add_parser("create-admin", help="Create a new admin; never promotes an existing account")
     admin.add_argument("--email", required=True)
-    subparsers.add_parser("seed", help="Add example vehicles only when inventory is empty")
+    subparsers.add_parser("seed", help="Add missing Indian catalogue models without overwriting inventory")
     args = parser.parse_args()
     engine, factory = make_database(Settings().database_url)
     try:
         with factory() as session:
             if args.command == "seed":
-                print("Example vehicles added." if seed(session) else "Inventory already has vehicles; nothing changed.")
+                print("Example vehicles added." if seed(session) else "Indian catalogue models already exist; nothing changed.")
                 return
             password = getpass("New admin password (at least 10 characters): ")
             if password != getpass("Confirm password: "):

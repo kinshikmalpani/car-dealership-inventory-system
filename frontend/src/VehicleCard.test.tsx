@@ -61,5 +61,8 @@ describe("Vehicle card", () => {
     expect(screen.getByRole("button", { name: /edit/i })).toBeEnabled();
     expect(screen.getByRole("button", { name: /restock/i })).toBeEnabled();
     expect(screen.getByRole("button", { name: /delete/i })).toBeEnabled();
+    expect(
+      screen.queryByRole("button", { name: /purchase/i }),
+    ).not.toBeInTheDocument();
   });
 });
