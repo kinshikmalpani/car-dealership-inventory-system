@@ -1,14 +1,22 @@
-<testsuites id="" name="" tests="5" failures="0" skipped="0" errors="0" time="30.339603000000004">
-<testsuite name="inventory.spec.ts" timestamp="2026-10-24T14:47:12.079Z" hostname="chromium" tests="5" failures="0" skipped="0" time="23.022" errors="0">
-<testcase name="customer searches, purchases, persists session, and sees sold-out vehicles" classname="inventory.spec.ts" time="5.782">
+<testsuites id="" name="" tests="8" failures="0" skipped="0" errors="0" time="28.003061999999996">
+<testsuite name="customer-experience.spec.ts" timestamp="2026-10-24T19:27:20.535Z" hostname="chromium" tests="2" failures="0" skipped="0" time="8.679" errors="0">
+<testcase name="customer filters seats, saves cars, compares, and submits a test-drive enquiry" classname="customer-experience.spec.ts" time="6.321">
 </testcase>
-<testcase name="admin adds, edits, restocks, and deletes a vehicle" classname="inventory.spec.ts" time="5.173">
+<testcase name="customer desktop and mobile pages have correct imagery, prices, and no internal metrics" classname="customer-experience.spec.ts" time="2.358">
 </testcase>
-<testcase name="registration creates a customer and validates wrong credentials" classname="inventory.spec.ts" time="5.015">
+</testsuite>
+<testsuite name="inventory.spec.ts" timestamp="2026-10-24T19:27:20.535Z" hostname="chromium" tests="6" failures="0" skipped="0" time="17.665" errors="0">
+<testcase name="customer purchases a car with accessories and downloads a private invoice" classname="inventory.spec.ts" time="3.052">
 </testcase>
-<testcase name="filters handle empty results and invalid price ranges" classname="inventory.spec.ts" time="3.296">
+<testcase name="admin adds, edits, restocks, and deletes a vehicle" classname="inventory.spec.ts" time="3.845">
 </testcase>
-<testcase name="desktop and mobile layouts have no overflow and provide screenshots" classname="inventory.spec.ts" time="3.756">
+<testcase name="registration creates a customer and validates wrong credentials" classname="inventory.spec.ts" time="1.344">
+</testcase>
+<testcase name="filters handle empty results and invalid price ranges" classname="inventory.spec.ts" time="2.834">
+</testcase>
+<testcase name="desktop and mobile layouts have no overflow and provide screenshots" classname="inventory.spec.ts" time="3.331">
+</testcase>
+<testcase name="legacy inventory requires explicit INR repricing and never mislabels USD totals" classname="inventory.spec.ts" time="3.259">
 </testcase>
 </testsuite>
 </testsuites>

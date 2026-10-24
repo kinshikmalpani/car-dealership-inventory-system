@@ -1,8 +1,8 @@
 # Motorroom — Car Dealership Inventory
 
-A full-stack dealership inventory application built with FastAPI, SQLite, React, TypeScript, and Tailwind CSS. Customers can register, browse, filter, and record purchases. Administrators can create and edit listings, restock units, and delete vehicles.
+An Indian dealership demo built with the existing FastAPI, SQLite, React, TypeScript, Vite, and Tailwind application. Customers can explore cars, save a wishlist, compare up to three models, plan EMI, request a test drive, and complete a simulated purchase with private purchase history and downloadable invoices. Administrators have a separate inventory and customer management workspace.
 
-Purchasing records an inventory decrement of one unit. This application does not collect payments, manage orders, or arrange delivery. Vehicle artwork is original representative SVG illustration, not photography of the listed models. Example prices are in USD; configure `VITE_CURRENCY` before entering real inventory in another currency.
+Prices use Indian rupees and Indian digit grouping. The six Indian catalogue models use documented manufacturer prices and five model-specific manufacturer photos; Tiago.ev has a labelled photo fallback. See [vehicle sources](docs/VEHICLE_SOURCES.md). Purchases are explicitly simulated: no payment, delivery booking, SMS, or email is sent. Registration and insurance are user-entered planning estimates; zero means unquoted and excluded. Accessory prices are labelled demo estimates. Invoices download as printable HTML, with browser Print → Save as PDF available.
 
 ## Prerequisites
 
@@ -34,7 +34,7 @@ Paste the generated value into `JWT_SECRET` in `backend/.env`. The application r
 .\.venv\Scripts\python.exe -m uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
 ```
 
-The admin command asks for a password of at least 10 characters and confirmation. It creates a new account and never promotes an existing customer account. Choose your own email instead of `owner@example.com`. Seeding is optional and runs only when inventory is empty.
+The admin command asks for a password of at least 10 characters and confirmation. It creates a new account and never promotes an existing customer account. Choose your own email instead of `owner@example.com`. Seeding is optional and adds missing Indian make/model listings without overwriting existing prices, metadata, or stock. Initial quantities of three are demo inventory, not claims about a real dealership.
 
 ### Frontend (second terminal, from repository root)
 
@@ -47,6 +47,10 @@ npm.cmd run dev
 Open [Motorroom](http://127.0.0.1:5173). Sign in with the admin account you created, or register a customer account. The frontend proxies `/api` to port 8000. Interactive API documentation is at [Swagger UI](http://127.0.0.1:8000/docs).
 
 For macOS/Linux, replace `.venv\Scripts\python.exe` with `.venv/bin/python`, `Copy-Item` with `cp`, and `npm.cmd` with `npm`.
+
+## Upgrade an existing installation
+
+Stop the backend, take a SQLite backup, then run `python -m alembic upgrade head` and `python -m app.cli seed` using your existing backend virtual environment and `.env`. Restart the backend and frontend. Do not recreate the database or replace the signing secret. Migration `0002_customer_commerce` retains accounts, hashed passwords, vehicle IDs, original prices, and stock; it adds metadata and commerce tables. Previously dollar-denominated inventory is marked USD and hidden from customer shopping until explicitly repriced by an admin. Old inventory-only purchases cannot be reconstructed as invoices because the original application did not store orders.
 
 ## Tests and production build
 
@@ -83,13 +87,23 @@ Protected requests use `Authorization: Bearer <access_token>`. Register and logi
 | POST | `/api/vehicles` | Admin |
 | PUT | `/api/vehicles/:id` | Admin |
 | DELETE | `/api/vehicles/:id` | Admin |
-| POST | `/api/vehicles/:id/purchase` | Signed-in user |
+| GET | `/api/vehicles/:id` | Signed-in user; customers see INR listings only |
+| POST | `/api/vehicles/:id/quote` | Customer |
+| POST | `/api/vehicles/:id/purchase` | Customer only; administrators cannot buy |
+| GET | `/api/accessories` | Signed-in user |
+| GET | `/api/orders` | Customer; own orders only |
+| GET | `/api/orders/:reference` | Owner or admin |
+| GET | `/api/orders/:reference/invoice` | Owner or admin |
+| GET / PUT / DELETE | `/api/wishlist` / `/api/wishlist/:id` | Customer; own wishlist only |
+| GET / POST | `/api/test-drives` | Customer; own enquiries only |
+| GET | `/api/admin/customers`, `/api/admin/orders`, `/api/admin/test-drives` | Admin |
+| PATCH | `/api/admin/test-drives/:id` | Admin; update enquiry status |
 | POST | `/api/vehicles/:id/restock` | Admin |
 | GET | `/api/health` | Public |
 
-Create fields: `make`, `model`, `category`, `price`, and `quantity`. Edit accepts all detail fields but deliberately excludes quantity; use purchase/restock to change stock. Restock accepts `{ "quantity": 3 }`. Purchase requires no body and buys one unit.
+Create fields: `make`, `model`, `category`, `price`, and `quantity`; optional details include `seating_capacity` (2–12), `description`, `image_url`, `source_url`, `features`, `specifications`, and `price_note`. New prices are INR. Each vehicle retains its unique internal database ID; customer cards use make and model. Edit accepts all detail fields but deliberately excludes quantity; use purchase/restock to change stock. Restock accepts `{ "quantity": 3 }`. Purchase buys one unit and returns a permanent order snapshot and reference. The optional JSON body accepts `accessory_ids`, `registration_estimate`, `insurance_estimate`, `buyer_name`, `city`, `expected_total`, and `idempotency_key`. The frontend supplies all review fields and a stable key for retries; reusing a key with different details returns 409. A bodyless request remains supported for older customer API clients and now also creates an order.
 
-Search parameters: `q` (make/model/category), `make`, `model`, `category`, `min_price`, `max_price`, `limit` (1–100, default 12), and `offset`. Results are `{ "items": [...], "total": 6 }`, newest first. Sold-out listings remain visible with purchasing disabled. Category filters match text case-insensitively; custom categories can be found through search.
+Search parameters: `q` (make/model/category), `make`, `model`, `category`, `min_price`, `max_price`, `seating_capacity`, `currency` (INR by default; USD restricted to admins), `limit` (1–100, default 12), and `offset`. Results are `{ "items": [...], "total": 6 }`, newest first. Sold-out listings remain visible with purchasing disabled. Category filters match text case-insensitively; custom categories can be found through search.
 
 Expected errors: 401 authentication, 403 permission, 404 missing vehicle, 409 duplicate account or stock conflict, and 422 invalid input. Money is returned as a two-decimal string.
 
@@ -107,12 +121,12 @@ docs/           verification reports, screenshots, and project notes
 ```
 
 - SQLite is a persistent local file (`backend/dealership.db` by default), never an in-memory production store.
-- Prices are integer cents in SQLite, parsed as decimal amounts at the API boundary.
-- Stock changes use one conditional SQL update, preventing simultaneous buyers from overselling the last unit. Database constraints also enforce nonnegative inventory.
+- Prices remain integer minor units in the existing `price_cents` column (paise for INR), parsed as decimal amounts at the API boundary. The additive migration records currency explicitly.
+- Checkout acquires a SQLite write transaction before reading price/idempotency state, uses a conditional stock decrement, and saves the order in the same transaction. Concurrent buyers cannot oversell the last unit; any order-write failure rolls stock back. Database constraints also enforce nonnegative inventory. Order snapshots and invoices survive vehicle edits/deletion.
 - Detail edits do not write stock quantities, preventing stale admin forms from overwriting purchases.
 - Passwords use Argon2 hashing; JWTs use a configured signing secret and expiry. Authorization reads the current database role, so role changes take effect immediately.
 - Tokens are stored in browser session storage, cleared on sign-out, and removed after a 401 response. Sign-out is local; an already-issued token remains valid until expiry. There is no password recovery, email verification, refresh-token mechanism, or server-side token revocation in this kata.
-- The default deployment model is one dealership and one currency. Dashboard unit counts and stock value are explicitly scoped to the currently displayed page.
+- Customer-facing inventory is INR only. Existing USD rows remain accessible in the admin Legacy inventory screen until an admin explicitly enters a verified INR price. No exchange rate or implicit currency conversion is applied. Admin stock statistics stay on the admin screen.
 - Alembic owns schema changes. Automatic table creation is used only by isolated unit/integration tests.
 
 For an internet-facing deployment, use HTTPS, a persistent writable SQLite volume, backups, a production process manager, and rate limiting at the application gateway. Serve the frontend and `/api` under the same origin or explicitly configure the API proxy. Serverless ephemeral storage is not appropriate for this SQLite setup. Hosting has not been selected or deployed.
@@ -120,7 +134,8 @@ For an internet-facing deployment, use HTTPS, a persistent writable SQLite volum
 ## Screenshots
 
 ![Sign-in screen](docs/screenshots/sign-in.png)
-![Desktop inventory](docs/screenshots/inventory-desktop.png)
+![Customer catalogue](docs/screenshots/customer-desktop.png)
+![Admin inventory](docs/screenshots/inventory-desktop.png)
 ![Mobile inventory](docs/screenshots/inventory-mobile.png)
 
 ## My AI Usage
@@ -133,5 +148,11 @@ AI generated substantial portions of this code and its tests. The Git history pr
 - [Tailwind with Vite](https://tailwindcss.com/docs/installation/using-vite)
 
 Observed impact: AI accelerated the initial implementation and verification while exposing decisions that still needed explicit review, including permissions, stock concurrency, and dependency versions. Passing tests provide evidence for the exercised cases, not proof of production readiness. The developer should add their own interview reflection after reviewing and using the application; this section does not claim manual work or personal learning that has not occurred.
+
+### Enhancement work, 24–25 October 2026
+
+Codex inspected the existing repository, APIs, authentication, SQLite data, tests, and Git status before enhancing it. The original stack and history were retained. New backend acceptance tests were committed in `ed5e864` and observed failing before implementation. A later high-price checkout regression was also reproduced before its fix. Frontend integration tests were expanded alongside implementation; not every UI change followed a strict red/green cycle.
+
+AI helped implement additive migrations, transactional purchases, permission checks, snapshot invoices, sourced catalogue data, and the customer/admin interfaces. Manufacturer sources informed prices and minimal specifications; unavailable detailed specifications were not invented. Review caught a modal-test timing issue and an overly restrictive total validation limit. The local database was backed up and preservation was checked during migration. These are automated-agent checks, not claims of human testing. The original AI usage account above remains part of the project history.
 
 See root `PROMPTS.md` for original conversation records and `docs/TEST_REPORT.md` for verification evidence.
