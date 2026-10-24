@@ -1,0 +1,14 @@
+<testsuites id="" name="" tests="5" failures="0" skipped="0" errors="0" time="30.339603000000004">
+<testsuite name="inventory.spec.ts" timestamp="2026-10-24T14:47:12.079Z" hostname="chromium" tests="5" failures="0" skipped="0" time="23.022" errors="0">
+<testcase name="customer searches, purchases, persists session, and sees sold-out vehicles" classname="inventory.spec.ts" time="5.782">
+</testcase>
+<testcase name="admin adds, edits, restocks, and deletes a vehicle" classname="inventory.spec.ts" time="5.173">
+</testcase>
+<testcase name="registration creates a customer and validates wrong credentials" classname="inventory.spec.ts" time="5.015">
+</testcase>
+<testcase name="filters handle empty results and invalid price ranges" classname="inventory.spec.ts" time="3.296">
+</testcase>
+<testcase name="desktop and mobile layouts have no overflow and provide screenshots" classname="inventory.spec.ts" time="3.756">
+</testcase>
+</testsuite>
+</testsuites>
