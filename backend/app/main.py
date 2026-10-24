@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import Settings
 from app.database import make_database
 from app.models import Base
+from app.routes import router
 
 
 def create_app(database_url: str | None = None, jwt_secret: str | None = None, initialize_database: bool = False):
@@ -27,4 +28,5 @@ def create_app(database_url: str | None = None, jwt_secret: str | None = None, i
     app.state.jwt_secret = secret
     app.state.token_minutes = settings.access_token_minutes
     app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Authorization", "Content-Type"])
+    app.include_router(router)
     return app
