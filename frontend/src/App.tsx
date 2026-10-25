@@ -23,7 +23,6 @@ const initialFilters = { q: "", category: "", min_price: "", max_price: "" };
 
 export default function App() {
   const route = useRoute();
-  const legacy = route === "/admin/legacy";
   const management =
     route.includes("customers") ||
     route.includes("orders") ||
