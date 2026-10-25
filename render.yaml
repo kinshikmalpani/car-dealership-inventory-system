@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: motorroom
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite:////tmp/dealership.db
+      - key: FRONTEND_DIST
+        value: /app/frontend/dist

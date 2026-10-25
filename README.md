@@ -4,6 +4,13 @@ An Indian dealership demo built with the existing FastAPI, SQLite, React, TypeSc
 
 Prices use Indian rupees and Indian digit grouping. The six Indian catalogue models use documented manufacturer prices and five model-specific manufacturer photos; Tiago.ev has a labelled photo fallback. See [vehicle sources](docs/VEHICLE_SOURCES.md). Purchases are explicitly simulated: no payment, delivery booking, SMS, or email is sent. Registration and insurance are user-entered planning estimates; zero means unquoted and excluded. Accessory prices are labelled demo estimates. Invoices download as printable HTML, with browser Print → Save as PDF available.
 
+## Submission links
+
+- Public source repository: [kinshikmalpani/car-dealership-inventory-system](https://github.com/kinshikmalpani/car-dealership-inventory-system)
+- Live application: deployment pending; a local URL is not a live submission link.
+- [Test results](docs/TEST_REPORT.md) and [raw AI conversation excerpts](PROMPTS.md).
+- [Deployment instructions](docs/DEPLOYMENT.md).
+
 ## Prerequisites
 
 - Python 3.13 (tested with 3.13.3)
@@ -129,12 +136,15 @@ docs/           verification reports, screenshots, and project notes
 - Customer-facing inventory is INR only. Existing USD rows remain accessible in the admin Legacy inventory screen until an admin explicitly enters a verified INR price. No exchange rate or implicit currency conversion is applied. Admin stock statistics stay on the admin screen.
 - Alembic owns schema changes. Automatic table creation is used only by isolated unit/integration tests.
 
-For an internet-facing deployment, use HTTPS, a persistent writable SQLite volume, backups, a production process manager, and rate limiting at the application gateway. Serve the frontend and `/api` under the same origin or explicitly configure the API proxy. Serverless ephemeral storage is not appropriate for this SQLite setup. Hosting has not been selected or deployed.
+For an internet-facing deployment, use HTTPS, a persistent writable SQLite volume, backups, a production process manager, and rate limiting at the application gateway. Serve the frontend and `/api` under the same origin or explicitly configure the API proxy. Serverless ephemeral storage is not appropriate for this SQLite setup. For this assessment, the owner selected a free Render demo with ephemeral SQLite and explicitly accepted resets. The hosted demo must not be used to retain real customer records. Local SQLite remains persistent. Deployment status and instructions are in `docs/DEPLOYMENT.md`.
 
 ## Screenshots
 
 ![Sign-in screen](docs/screenshots/sign-in.png)
 ![Customer catalogue](docs/screenshots/customer-desktop.png)
+![Vehicle details](docs/screenshots/vehicle-detail.png)
+![Checkout](docs/screenshots/checkout-desktop.png)
+![Customer mobile catalogue](docs/screenshots/customer-mobile.png)
 ![Admin inventory](docs/screenshots/inventory-desktop.png)
 ![Mobile inventory](docs/screenshots/inventory-mobile.png)
 
@@ -154,5 +164,9 @@ Observed impact: AI accelerated the initial implementation and verification whil
 Codex inspected the existing repository, APIs, authentication, SQLite data, tests, and Git status before enhancing it. The original stack and history were retained. New backend acceptance tests were committed in `ed5e864` and observed failing before implementation. A later high-price checkout regression was also reproduced before its fix. Frontend integration tests were expanded alongside implementation; not every UI change followed a strict red/green cycle.
 
 AI helped implement additive migrations, transactional purchases, permission checks, snapshot invoices, sourced catalogue data, and the customer/admin interfaces. Manufacturer sources informed prices and minimal specifications; unavailable detailed specifications were not invented. Review caught a modal-test timing issue and an overly restrictive total validation limit. The local database was backed up and preservation was checked during migration. These are automated-agent checks, not claims of human testing. The original AI usage account above remains part of the project history.
+
+### Deliverable preparation
+
+Codex prepared the Docker image definition, free Render Blueprint, production static-file serving, deployment instructions, and raw deliverables conversation export. A production-serving acceptance test was written and observed failing before its implementation. The owner explicitly chose free hosting and accepted resetting SQLite storage. No local accounts or database files are included in the image or public repository. Windows file encoding and Git credential-store issues were encountered; the encoding issue was corrected and the production build rerun successfully. Hosted deployment and GitHub Actions results are reported separately from local tests.
 
 See root `PROMPTS.md` for original conversation records and `docs/TEST_REPORT.md` for verification evidence.

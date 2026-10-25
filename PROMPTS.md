@@ -357,3 +357,110 @@ Your local database upgrade is complete. All three accounts and six original veh
 ### Assistant
 
 The visual review is complete. I also found an admin-only edge case: the legacy inventory summary still formatted its old dollar total as rupees. A new browser test reproduces it; I’m fixing that display and checking the explicit INR repricing flow.
+
+## Deliverables conversation
+
+Verbatim visible messages, excluding tool traffic and automatic environment context. Export snapshot before publication.
+
+### User — 2026-10-24T19:43:50.891Z
+
+````text
+Now finally lets work on the **Deliverables** -
+
+- A public Git repository link (e.g., on GitHub, GitLab). 
+
+* A comprehensive README.md file that includes: 
+
+- A clear explanation of the project. 
+
+* Detailed instructions on how to set up and run the project locally (both backend and frontend). 
+
+- Screenshots of your final application in action. 
+
+* The mandatory "My AI Usage" section. 
+
+- A test report showing the results of your test suite. 
+
+* A root PROMPTS.md containing your raw, unedited AI chat logs or public chat links (no AI-generated summaries). 
+
+- A link to the deployed, live application on a platform like Vercel, Netlify, Heroku, or AWS. 
+
+````
+
+### Assistant — 2026-10-24T19:43:55.624Z
+
+````text
+I’ll check the repository and deliverable files, then inspect the available GitHub and hosting connections so I can publish the source and deploy the application.
+
+````
+
+### Assistant — 2026-10-24T19:44:22.492Z
+
+````text
+GitHub is connected as `kinshikmalpani`, but this repository has no remote yet. The GitHub connector can’t create repositories, so I’ll check browser access for that step. For hosting, SQLite needs persistent storage; Render supports it on paid services, so the hosting choice needs your input before any charge is incurred. [Render documentation](https://render.com/docs/disks)
+
+````
+
+### Assistant — 2026-10-24T19:48:56.321Z
+
+````text
+The README, screenshots, test report and raw-message export are already present. I’m preparing a deployment package that serves React and FastAPI from one address and keeps SQLite on a persistent volume. GitHub publishing is waiting on the browser sign-in; local preparation can continue meanwhile.
+
+````
+
+### Assistant — 2026-10-24T19:50:02.553Z
+
+````text
+I found an existing empty public repository in your account: `kinshikmalpani/car-dealership-inventory-system`. I’ll use it and preserve the local commit history. The deployment tests now cover frontend serving, protected API access, and startup without re-seeding deleted inventory.
+
+````
+
+### User — 2026-10-24T19:51:00.602Z
+
+````text
+<send_user_message_question_reply>
+[{"questionItemId":"[\"request_user_input_async\",\"call_aJa8RLqND1UgdeSpzlHFzzQC\",0]","question":"Which hosting option should I prepare for the live app? Keeping SQLite requires persistent storage; Render’s persistent disk option is paid. I can finish the repository and deployment files while you decide.","answer":"Free hosting only; discuss the storage trade-off first"},{"questionItemId":"[\"request_user_input_async\",\"call_k9mouNAspQ8Jw9scJxbFVWQ2\",0]","question":"Please sign in to GitHub in the browser tab I opened, then reply “signed in.” The connector identifies your account but cannot create a repository, and this browser is currently signed out. Please enter credentials only on GitHub, not in chat.","answer":"is it signed in now"}]
+</send_user_message_question_reply>
+
+````
+
+### User — 2026-10-25T06:45:31.623Z
+
+````text
+continue
+
+````
+
+### Assistant — 2026-10-25T06:45:47.862Z
+
+````text
+I’ll keep hosting free. Render’s free service can run the existing SQLite app, but accounts, orders and stock changes would be lost when the service restarts or redeploys. A free hosted PostgreSQL database could retain that data, but it would require adapting the current SQLite-specific backend. [Render’s free-service limits](https://render.com/docs/free)
+
+I’ll check GitHub sign-in now and continue preparing the public repository while you choose between those trade-offs.
+
+````
+
+### Assistant — 2026-10-25T06:46:24.174Z
+
+````text
+Yes—GitHub is signed in now, and the public repository is ready. I’ll push the project there with its existing history. No paid hosting will be started.
+
+````
+
+### User — 2026-10-25T06:47:36.579Z
+
+````text
+<send_user_message_question_reply>
+[{"questionItemId":"[\"request_user_input_async\",\"call_UpBXJjsHe9QDfkpcDpTMGa5V\",0]","question":"Which free deployment trade-off do you prefer? Render free + SQLite keeps the current stack but loses hosted accounts/orders on restarts. Render free + Neon PostgreSQL keeps data within free-tier limits but needs backend changes and a Neon account.","answer":"Keep SQLite; accept a resetting public demo"}]
+</send_user_message_question_reply>
+
+````
+
+### Assistant — 2026-10-25T06:48:03.097Z
+
+````text
+Understood—we’ll keep SQLite and publish a free demo that can reset. I’ll add a visible notice about those resets and simulated payments. Your local database remains separate.
+
+The Git push hit a Windows credential-store error. I’m preparing a one-time GitHub authorization flow to publish the full history.
+
+````

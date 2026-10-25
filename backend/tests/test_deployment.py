@@ -19,3 +19,25 @@ def test_production_frontend_preserves_api_and_limits_file_access(tmp_path, monk
         assert client.get("/api/nonexistent").status_code == 404
         assert client.get("/missing.js").status_code == 404
         assert "private-file" not in client.get("/%2e%2e/secret.txt").text
+
+
+def test_container_bootstrap_migrates_and_seeds_only_once(tmp_path):
+    from sqlalchemy import select
+    from app.database import make_database
+    from app.models import Vehicle
+    from app.serve import prepare_database
+    url = f"sqlite:///{tmp_path / 'persistent.db'}"
+    prepare_database(url)
+    engine, factory = make_database(url)
+    with factory() as session:
+        cars = session.scalars(select(Vehicle)).all()
+        assert len(cars) == 6
+        for car in cars:
+            session.delete(car)
+        session.commit()
+    engine.dispose()
+    prepare_database(url)
+    engine, factory = make_database(url)
+    with factory() as session:
+        assert session.scalars(select(Vehicle)).all() == []
+    engine.dispose()

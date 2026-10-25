@@ -4,8 +4,8 @@ Verified locally on 24–25 October 2026 with Python 3.13.3, Node.js 24.12.0, an
 
 | Check | Result |
 |---|---|
-| Backend pytest suite | 32 passed |
-| Backend statement coverage | 578 / 594 statements; 97% rounded |
+| Backend pytest suite | 34 passed |
+| Backend statement coverage | 603 / 625 statements; 96% rounded |
 | React component / finance tests | 7 passed |
 | Playwright Chromium journeys | 8 passed |
 | TypeScript check and production build | Passed |
@@ -50,3 +50,7 @@ Before the upgrade, the original backend was stopped and a SQLite backup was cre
 - Playwright-managed child-process cleanup stalled on this restricted Windows host. The successful run used isolated servers on ports 8001/5174, `E2E_EXTERNAL_SERVERS=1`, and `E2E_BASE_URL=http://127.0.0.1:5174`. The normal local app/data were separate from browser fixtures.
 - pytest used an explicit workspace temporary directory because the default Windows pytest temp directory was inaccessible. The installed Starlette HTTPX TestClient deprecation warning remains visible.
 - Coverage measures statements, not every input or production readiness. Firefox, Safari, load tests, hosted CI and deployment were not run. Original authentication limitations (no password recovery/email verification/token revocation) remain documented in README.
+
+## Deployment preparation checks
+
+Two additional backend tests verify production static files, API authentication and 404 behavior, traversal protection, and migration/first-start-only catalogue seeding. The frontend-serving test was observed failing before implementation (commit `355fa1c`). The final backend run passed all 34 tests. Docker is not installed on the local host, so the container image itself has not yet been built here. Hosted build/deployment status is recorded separately; local test results do not imply successful hosting.

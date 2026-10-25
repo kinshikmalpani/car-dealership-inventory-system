@@ -1138,3 +1138,5 @@ form label {
     scroll-behavior: auto !important;
   }
 }
+
+.deployment-notice { padding: 12px 24px; text-align: center; background: #fff1ce; color: #463820; font-size: 14px; line-height: 1.5; border-bottom: 1px solid #e9d8a7; }
