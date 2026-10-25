@@ -57,7 +57,7 @@ For macOS/Linux, replace `.venv\Scripts\python.exe` with `.venv/bin/python`, `Co
 
 ## Upgrade an existing installation
 
-Stop the backend, take a SQLite backup, then run `python -m alembic upgrade head` and `python -m app.cli seed` using your existing backend virtual environment and `.env`. Restart the backend and frontend. Do not recreate the database or replace the signing secret. Migration `0002_customer_commerce` retains accounts, hashed passwords, vehicle IDs, original prices, and stock; it adds metadata and commerce tables. Previously dollar-denominated inventory is marked USD and hidden from customer shopping until explicitly repriced by an admin. Old inventory-only purchases cannot be reconstructed as invoices because the original application did not store orders.
+Stop the backend, take a SQLite backup, then run `python -m alembic upgrade head` and `python -m app.cli seed` using your existing backend virtual environment and `.env`. Restart the backend and frontend. Do not recreate the database or replace the signing secret. Migration `0002_customer_commerce` retains accounts, hashed passwords, vehicle IDs, original prices, and stock; it adds metadata and commerce tables.
 
 ## Tests and production build
 
@@ -110,7 +110,7 @@ Protected requests use `Authorization: Bearer <access_token>`. Register and logi
 
 Create fields: `make`, `model`, `category`, `price`, and `quantity`; optional details include `seating_capacity` (2–12), `description`, `image_url`, `source_url`, `features`, `specifications`, and `price_note`. New prices are INR. Each vehicle retains its unique internal database ID; customer cards use make and model. Edit accepts all detail fields but deliberately excludes quantity; use purchase/restock to change stock. Restock accepts `{ "quantity": 3 }`. Purchase buys one unit and returns a permanent order snapshot and reference. The optional JSON body accepts `accessory_ids`, `registration_estimate`, `insurance_estimate`, `buyer_name`, `city`, `expected_total`, and `idempotency_key`. The frontend supplies all review fields and a stable key for retries; reusing a key with different details returns 409. A bodyless request remains supported for older customer API clients and now also creates an order.
 
-Search parameters: `q` (make/model/category), `make`, `model`, `category`, `min_price`, `max_price`, `seating_capacity`, `currency` (INR by default; USD restricted to admins), `limit` (1–100, default 12), and `offset`. Results are `{ "items": [...], "total": 6 }`, newest first. Sold-out listings remain visible with purchasing disabled. Category filters match text case-insensitively; custom categories can be found through search.
+Search parameters: `q` (make/model/category), `make`, `model`, `category`, `min_price`, `max_price`, `seating_capacity`, `limit` (1–100, default 12), and `offset`. Results are `{ "items": [...], "total": 6 }`, newest first. Sold-out listings remain visible with purchasing disabled. Category filters match text case-insensitively; custom categories can be found through search.
 
 Expected errors: 401 authentication, 403 permission, 404 missing vehicle, 409 duplicate account or stock conflict, and 422 invalid input. Money is returned as a two-decimal string.
 
