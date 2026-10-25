@@ -267,9 +267,6 @@ export default function App() {
         <a className="nav-item" href="#/admin/test-drives">
           ◷ Test-drive enquiries
         </a>
-        <a className="nav-item" href="#/admin/legacy">
-          ↺ Legacy inventory
-        </a>
         <button className="nav-item" onClick={() => setGuide(true)}>
           <span>◷</span> Quick guide
         </button>
