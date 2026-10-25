@@ -122,7 +122,7 @@ export default function App() {
       clearTimeout(timeout);
       controller.abort();
     };
-  }, [token, user, filters, offset, refresh, legacy]);
+  }, [token, user, filters, offset, refresh]);
 
   function filter(key: keyof typeof filters, value: string) {
     setFilters((current) => ({ ...current, [key]: value }));
