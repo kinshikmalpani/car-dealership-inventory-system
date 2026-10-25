@@ -347,7 +347,7 @@ export default function App() {
                     <p>Stock value on this page</p>
                     <strong className="stat-value">{money(value)}</strong>
                   </div>
-                  <span className="stat-note">{legacy ? "Original amounts preserved" : `Listed value · ${currency}`}</span>
+                  <span className="stat-note">{`Listed value · ${currency}`}</span>
                 </div>
               </section>
               <section className="collection">
