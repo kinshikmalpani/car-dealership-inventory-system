@@ -95,11 +95,11 @@ export default function App() {
     setLoading(true);
     setError("");
     const timeout = setTimeout(() => {
-      const params = new URLSearchParams({
+    const params = new URLSearchParams({
         limit: "12",
         offset: String(offset),
-        currency: legacy ? "USD" : "INR",
-      });
+        currency: "INR",
+    });
       Object.entries(filters).forEach(([key, value]) => {
         if (value.trim()) params.set(key, value.trim());
       });
