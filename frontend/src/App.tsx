@@ -302,13 +302,7 @@ export default function App() {
             <AdminManagement token={token!} route={route} />
           ) : (
             <>
-              {legacy && (
-                <div className="alert">
-                  These preserved USD listings are hidden from customers. Edit
-                  each listing with a verified INR price before publishing it to
-                  the Indian catalogue.
-                </div>
-              )}
+          
               <section className="page-heading">
                 <div>
                   <p className="eyebrow">YOUR SHOWROOM, AT A GLANCE</p>
