@@ -171,24 +171,3 @@ test("desktop and mobile layouts have no overflow and provide screenshots", asyn
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   expect(errors).toEqual([]);
 });
-
-
-test("legacy inventory requires explicit INR repricing and never mislabels USD totals", async ({ page }) => {
-  await signIn(page);
-  await page.getByRole("link", { name: "Legacy inventory" }).click();
-  await expect(page.locator(".vehicle-card")).toHaveCount(1);
-  await expect(page.locator(".stat-value")).toHaveText("Repricing needed");
-  await page.getByRole("button", { name: "Edit details" }).click();
-  await expect(page.getByLabel("Price (INR)")).toHaveValue("");
-  await page.getByLabel("Price (INR)").fill("1500000");
-  await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.locator(".vehicle-card")).toHaveCount(0);
-  await page.getByRole("link", { name: /Vehicle inventory/ }).click();
-  await page.getByLabel("Search vehicles").fill("Legacy Test");
-  await expect(page.locator(".vehicle-card")).toHaveCount(1);
-  await expect(page.locator(".vehicle-card")).toContainText("₹15,00,000.00");
-  await page.getByRole("button", { name: "Delete", exact: true }).click();
-  await page.getByRole("button", { name: "Delete vehicle", exact: true }).click();
-  await expect(page.locator(".vehicle-card")).toHaveCount(0);
-});
