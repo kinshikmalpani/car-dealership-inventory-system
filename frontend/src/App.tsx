@@ -345,7 +345,7 @@ export default function App() {
                   <span className="stat-icon">◈</span>
                   <div>
                     <p>Stock value on this page</p>
-                    <strong className="stat-value">{legacy ? "Repricing needed" : money(value)}</strong>
+                    <strong className="stat-value">{money(value)}</strong>
                   </div>
                   <span className="stat-note">{legacy ? "Original amounts preserved" : `Listed value · ${currency}`}</span>
                 </div>
